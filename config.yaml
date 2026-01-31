@@ -14,14 +14,16 @@ app:
 # Data Processing & Dataset
 # -----------------------------------------------------------------------------
 dataset:
-  name: "ASVspoof2019_LA"
-  base_path: "./data/ASVspoof2019/LA"
+  name: "SceneFake"
+  base_path: "C:/Users/ASUS/.cache/kagglehub/datasets/mohammedabdeldayem/scenefake/versions/1"
   output_path: "./processed_data"
+  file_extension: "wav"
+  type: "folder" # 'protocol' for ASVspoof, 'folder' for SceneFake
   
   # Dataset sampling (null for all)
-  train_samples: 5000 
-  dev_samples: 1000
-  eval_samples: 1000
+  train_samples: null 
+  dev_samples: null
+  eval_samples: null
 
 audio:
   sample_rate: 16000

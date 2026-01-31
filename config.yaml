@@ -73,7 +73,7 @@ feature_selection:
 # Model Configuration: Custom
 # -----------------------------------------------------------------------------
 model_custom:
-  architecture: "cnn_lstm"  # Options: cnn_gru, cnn_lstm, cnn_bilstm, simple_cnn
+  architecture: "simple_cnn"  # Options: cnn_gru, cnn_lstm, cnn_bilstm, simple_cnn
   weights_path: "./weights/custom_model/deepfake_detector.h5"
   
   # CNN parameters

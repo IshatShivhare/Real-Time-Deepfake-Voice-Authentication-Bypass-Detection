@@ -23,7 +23,14 @@ class EnsembleDetector:
     def __init__(self, device=None):
         self.config = get_config()
         if device is None:
-            self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+            # Check config for GPU preference
+            use_gpu = self.config.get('app', {}).get('use_gpu', True)
+            if use_gpu and torch.cuda.is_available():
+                self.device = 'cuda'
+            else:
+                self.device = 'cpu'
+                if use_gpu and not torch.cuda.is_available():
+                    logger.warning("GPU enabled in config but CUDA not available. Using CPU.")
         else:
             self.device = device
             

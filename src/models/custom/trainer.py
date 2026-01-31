@@ -16,6 +16,18 @@ class ModelTrainer:
         self.history = None
         self.training_time = 0
         
+        # GPU Configuration
+        if not self.config.get('app', {}).get('use_gpu', False):
+            # Disable GPU for TensorFlow
+            tf.config.set_visible_devices([], 'GPU')
+            print("🚫 GPU disabled via config (using CPU for training)")
+        else:
+            gpus = tf.config.list_physical_devices('GPU')
+            if gpus:
+                print(f"🚀 Using GPU: {gpus[0]}")
+            else:
+                print("⚠️  GPU enabled in config but no GPU found. Using CPU.")
+        
     def prepare_data(self, X_train, y_train, X_val, y_val):
         """
         Prepare data for training

@@ -14,14 +14,16 @@ app:
 # Data Processing & Dataset
 # -----------------------------------------------------------------------------
 dataset:
-  name: "ASVspoof2019_LA"
-  base_path: "./data/ASVspoof2019/LA"
+  name: "SceneFake"
+  base_path: "C:/Users/ASUS/.cache/kagglehub/datasets/mohammedabdeldayem/scenefake/versions/1"
   output_path: "./processed_data"
+  file_extension: "wav"
+  type: "folder" # 'protocol' for ASVspoof, 'folder' for SceneFake
   
   # Dataset sampling (null for all)
-  train_samples: 5000 
-  dev_samples: 1000
-  eval_samples: 1000
+  train_samples: null 
+  dev_samples: null
+  eval_samples: null
 
 audio:
   sample_rate: 16000
@@ -126,6 +128,6 @@ model_vocoder:
 ensemble:
   method: "weighted_average" # or "voting", "stacking"
   weights: 
-    custom: 0.4
-    vocoder: 0.6
+    custom: 0.5      # Your trained CNN+GRU model
+    vocoder: 0.5     # Pretrained RawNet vocoder model
   threshold: 0.5

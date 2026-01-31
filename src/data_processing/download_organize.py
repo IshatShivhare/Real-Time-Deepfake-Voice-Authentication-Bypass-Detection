@@ -8,25 +8,84 @@ from pathlib import Path
 from tqdm import tqdm
 from src.utils.config_loader import get_config
 
-def organize_asvspoof_data(config=None):
+def organize_folder_dataset(config):
     """
-    Organize ASVspoof data into structured folders
+    Organize folder-based datasets (like SceneFake) where data is already split into real/fake folders
     """
-    if config is None:
-        config = get_config()
+    base_path = Path(config['dataset']['base_path'])
+    output_path = Path(config['dataset']['output_path'])
+    file_ext = config['dataset'].get('file_extension', 'wav')
+    
+    print(f"\nProcessing folder-based dataset from: {base_path}")
+    
+    if not base_path.exists():
+        print(f"❌ Dataset path not found: {base_path}")
+        return False
+
+    # Mapping: source_folder_name -> target_label
+    # SceneFake uses 'real' and 'fake'. Map them to 'bonafide' and 'spoof' for consistency
+    label_map = {
+        'real': 'bonafide',
+        'fake': 'spoof'
+    }
+    
+    stats = {'bonafide': 0, 'spoof': 0}
+    
+    for split in ['train', 'dev', 'eval']:
+        print(f"\n📁 Processing {split} split...")
         
+        for src_label, target_label in label_map.items():
+            # Source path: base_path/split/src_label (e.g., base/train/real)
+            src_dir = base_path / split / src_label
+            
+            if not src_dir.exists():
+                print(f"   ⚠️  Folder not found: {src_dir}")
+                continue
+                
+            # Target path: output_path/split/target_label (e.g., processed/train/bonafide)
+            dst_dir = output_path / split / target_label
+            dst_dir.mkdir(parents=True, exist_ok=True)
+            
+            files = list(src_dir.glob(f'*.{file_ext}'))
+            
+            # Limit samples if configured
+            max_samples = config['dataset'].get(f'{split}_samples')
+            if max_samples:
+                files = files[:max_samples]
+                
+            count = 0
+            for src_file in tqdm(files, desc=f"   Copying {target_label}"):
+                dst_file = dst_dir / src_file.name
+                
+                if not dst_file.exists():
+                    try:
+                        # Try symlink first for speed
+                        os.symlink(src_file, dst_file)
+                    except OSError:
+                        shutil.copy2(src_file, dst_file)
+                
+                count += 1
+            
+            print(f"   ✓ {target_label}: {count} files")
+            stats[target_label] += count
+            
+    print(f"\nFinal Stats: {stats}")
+    return True
+
+def organize_asvspoof_protocol(config):
+    """
+    Organize ASVspoof data using protocol files
+    """
     base_path = Path(config['dataset']['base_path'])
     output_path = Path(config['dataset']['output_path'])
     
-    print("=" * 60)
-    print("STEP 1: Organizing ASVspoof 2019 LA Dataset")
-    print("=" * 60)
+    # ... (Keep existing ASVspoof logic roughly same, but wrapped here)
+    # For brevity, reusing the existing logic structure but adapting it slightly if needed.
+    # Since I'm replacing the whole file content essentially, I will just paste the logic here.
     
     # Check if base path exists
     if not base_path.exists():
         print(f"\n❌ Dataset not found at: {base_path}")
-        print("\nPlease download ASVspoof 2019 LA from:")
-        print("https://datashare.ed.ac.uk/handle/10283/3336")
         return False
     
     # Create output directories
@@ -34,7 +93,6 @@ def organize_asvspoof_data(config=None):
         for label in ['bonafide', 'spoof']:
             (output_path / split / label).mkdir(parents=True, exist_ok=True)
     
-    # Process each split
     splits = [
         ('train', 'ASVspoof2019_LA_train', 'ASVspoof2019.LA.cm.train.trn.txt'),
         ('dev', 'ASVspoof2019_LA_dev', 'ASVspoof2019.LA.cm.dev.trl.txt'),
@@ -50,12 +108,18 @@ def organize_asvspoof_data(config=None):
         audio_path = base_path / audio_folder / 'flac'
         
         if not protocol_path.exists():
-            print(f"   ⚠️  Protocol file not found: {protocol_file}")
-            continue
+            # Try alternative path structure sometimes found in unzipped datasets
+            protocol_path = base_path / 'LA' / 'ASVspoof2019_LA_cm_protocols' / protocol_file
+            if not protocol_path.exists():
+                print(f"   ⚠️  Protocol file not found: {protocol_file}")
+                continue
         
         if not audio_path.exists():
-             print(f"   ⚠️  Audio folder not found: {audio_path}")
-             continue
+             # Try alternative path
+             audio_path = base_path / 'LA' / audio_folder / 'flac'
+             if not audio_path.exists():
+                 print(f"   ⚠️  Audio folder not found: {audio_path}")
+                 continue
 
         # Read protocol file
         with open(protocol_path, 'r') as f:
@@ -102,8 +166,22 @@ def organize_asvspoof_data(config=None):
         print(f"   ✓ {split_name}: {bonafide_count} bonafide, {spoof_count} spoof")
         stats['bonafide'] += bonafide_count
         stats['spoof'] += spoof_count
-    
     return True
 
+def organize_data(config=None):
+    if config is None:
+        config = get_config()
+        
+    print("=" * 60)
+    print("STEP 1: Organizing Dataset")
+    print("=" * 60)
+    
+    dataset_type = config['dataset'].get('type', 'protocol')
+    
+    if dataset_type == 'folder':
+        return organize_folder_dataset(config)
+    else:
+        return organize_asvspoof_protocol(config)
+
 if __name__ == "__main__":
-    organize_asvspoof_data()
+    organize_data()

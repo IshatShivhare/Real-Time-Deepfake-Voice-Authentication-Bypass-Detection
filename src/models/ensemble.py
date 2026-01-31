@@ -107,27 +107,46 @@ class EnsembleDetector:
             prob_fake = probs[0, 1].item()
             return prob_fake
 
-    def predict_custom(self, audio_np):
+    def predict_custom(self, audio_path):
         """Get prediction from Custom model"""
         if self.custom_model is None:
             return 0.5
             
-        # Keras model expects (batch, time, features) or (batch, features)
-        # Depending on training data.
-        # Assuming simple waveform or pre-extracted features?
-        # The trainer implies it takes (samples, features) or (samples, timesteps, features).
-        # We need feature extraction for Custom model usually (MFCCs).
-        
-        # NOTE: If custom model takes MFCCs, we must extract them here.
-        # Based on file list, `feature_analysis.py` suggests feature extraction.
-        # For now, simplistic assumption: it might take raw audio or we skip if not implemented.
-        # Given `utils/features.py` exists, let's assume we need features.
-        
-        # For robustness, if we can't easily extract features right here without
-        # reimplementing the entire pipeline, we might return 0.5 or handle graceful failure.
-        
-        # Placeholder for feature extraction
-        return 0.5 
+        try:
+            import librosa
+            import pickle
+            from src.data_processing.utils.features import extract_all_features
+            
+            # Load audio
+            sr = self.config['audio']['sample_rate']
+            audio, _ = librosa.load(audio_path, sr=sr)
+            
+            # Ensure minimum length (same as training)
+            min_length = 8192
+            if len(audio) < min_length:
+                audio = np.pad(audio, (0, min_length - len(audio)), mode='constant')
+            
+            # Extract features (same as training)
+            features = extract_all_features(audio, sr, self.config)
+            
+            # Load scaler and normalize
+            scaler_path = Path(self.config['dataset']['output_path']) / 'scaler.pkl'
+            if scaler_path.exists():
+                with open(scaler_path, 'rb') as f:
+                    scaler = pickle.load(f)
+                features = scaler.transform(features.reshape(1, -1))
+            else:
+                features = features.reshape(1, -1)
+            
+            # Predict
+            prediction = self.custom_model.predict(features, verbose=0)
+            prob_fake = float(prediction[0][0])
+            
+            return prob_fake
+            
+        except Exception as e:
+            logger.error(f"Error in custom prediction: {e}")
+            return 0.5
 
     def predict_single(self, audio_path):
         """
@@ -137,14 +156,11 @@ class EnsembleDetector:
             raise ValueError("Models not loaded")
 
         # 1. Vocoder Prediction (Raw Audio)
-        # Preprocess for RawNet (Tensor)
         vocoder_input = preprocess_audio(audio_path)
         vocoder_score = self.predict_vocoder(vocoder_input)
         
-        # 2. Custom Prediction
-        # Update: Custom model likely needs feature extraction.
-        # For now, we rely heavily on Vocoder or use dummy for custom if not ready.
-        custom_score = 0.5 # self.predict_custom(audio_path)
+        # 2. Custom Prediction (Feature-based)
+        custom_score = self.predict_custom(audio_path)
         
         # 3. Ensemble
         weights = self.config['ensemble']['weights']

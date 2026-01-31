@@ -106,7 +106,7 @@ model_custom:
 # -----------------------------------------------------------------------------
 model_vocoder:
   name: "RawNet2"
-  weights_path: "./weights/vocoder_model/librifake_pretrained_lambda0.5_epoch_25.pth"
+  weights_path: "./weights/librifake_pretrained_lambda0.5_epoch_25.pth"
   
   nb_samp: 64600           # ~4 seconds at 16k
   first_conv: 1024         # no. of filter coefficients 

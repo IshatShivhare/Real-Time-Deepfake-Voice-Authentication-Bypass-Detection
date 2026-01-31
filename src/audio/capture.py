@@ -38,7 +38,7 @@ class AudioCapturer:
             logger.error(f"Error listing devices: {e}")
             return []
 
-    def __init__(self, device_index=None, sample_rate=48000, buffer_duration=1.0):
+    def __init__(self, device_index=None, sample_rate=48000, buffer_duration=2.5):
         self.device_index = device_index
         self.sample_rate = sample_rate # Capture rate
         self.buffer_size = int(sample_rate * buffer_duration)
@@ -88,7 +88,7 @@ class AudioCapturer:
             # Print to terminal like reference script
             color = "\033[91m" if prediction == 1 else "\033[92m" 
             reset = "\033[0m"
-            print(f"\n{color}>> [Audio 1s | Amp: {max_amp:.4f}] Prediction: {result_text} | Confidence: {confidence:.2%}{reset}")
+            print(f"\n{color}>> [Audio 2.5s | Amp: {max_amp:.4f}] Prediction: {result_text} | Confidence: {confidence:.2%}{reset}")
             
             logger.info(f"Prediction: {result_text} | Confidence: {confidence:.2%}")
             

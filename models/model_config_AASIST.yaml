@@ -1,0 +1,38 @@
+# AASIST-L Model Configuration
+# Lightweight version with 85k parameters
+
+model:
+  architecture: "AASIST"
+  
+  # First convolution (Sinc layer)
+  first_conv: 128
+  
+  # Filter configurations for residual blocks
+  # Format: [input_channels, output_channels]
+  filts:
+    - 70              # First Sinc conv output channels
+    - [1, 32]         # Block 1
+    - [32, 32]        # Block 2
+    - [32, 64]        # Block 3
+    - [64, 64]        # Blocks 4-6
+  
+  # Graph Attention dimensions
+  gat_dims:
+    - 80              # First GAT dimension
+    - 160             # Second GAT dimension
+  
+  # Graph pooling ratios
+  pool_ratios:
+    - 0.5             # Spectral pool ratio
+    - 0.5             # Temporal pool ratio
+    - 0.5             # Heterogeneous pool ratio
+  
+  # Temperature parameters for attention
+  temperatures:
+    - 1.0             # GAT-S temperature
+    - 1.0             # GAT-T temperature
+    - 1.0             # HtrgGAT temperature
+  
+  # Input configuration
+  nb_samp: 64600      # Number of samples (4s at 16kHz)
+  in_channels: 1      # Mono audio

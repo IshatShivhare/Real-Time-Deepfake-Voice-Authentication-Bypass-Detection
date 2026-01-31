@@ -8,6 +8,9 @@ import sys
 import os
 from pathlib import Path
 
+# Suppress TensorFlow info messages
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
 # Add src to path
 sys.path.append(str(Path(__file__).parent / 'src'))
 

@@ -182,7 +182,6 @@ class EnsembleDetector:
             raise ValueError("Models not loaded")
 
         # 1. Vocoder Prediction (Raw Audio)
-        # Preprocess for RawNet (Tensor)
         vocoder_input = preprocess_audio(audio_path)
         vocoder_score = self.predict_vocoder(vocoder_input)
         

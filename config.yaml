@@ -129,6 +129,6 @@ model_vocoder:
 ensemble:
   method: "weighted_average" # or "voting", "stacking"
   weights: 
-    custom: 0.5
-    vocoder: 0.5
+    custom: 0.5      # Your trained CNN+GRU model
+    vocoder: 0.5     # Pretrained RawNet vocoder model
   threshold: 0.5

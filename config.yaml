@@ -9,14 +9,15 @@ app:
   random_seed: 42
   debug: false
   output_dir: "./outputs"
+  use_gpu: true
 
 # -----------------------------------------------------------------------------
 # Data Processing & Dataset
 # -----------------------------------------------------------------------------
 dataset:
   name: "SceneFake"
-  base_path: "C:/Users/ASUS/.cache/kagglehub/datasets/mohammedabdeldayem/scenefake/versions/1"
-  output_path: "./processed_data"
+  base_path: "c:/Users/ishat/OneDrive/Documents/Projects/Deepfake Voice Detection/data"
+  output_path: "./data"
   file_extension: "wav"
   type: "folder" # 'protocol' for ASVspoof, 'folder' for SceneFake
   
@@ -69,10 +70,10 @@ feature_selection:
   top_n_features: null     # null = use all
 
 # -----------------------------------------------------------------------------
-# Model Configuration: Custom (CNN+GRU)
+# Model Configuration: Custom
 # -----------------------------------------------------------------------------
 model_custom:
-  architecture: "cnn_gru"  # Options: cnn_gru, cnn_lstm, cnn_bilstm, simple_cnn
+  architecture: "cnn_lstm"  # Options: cnn_gru, cnn_lstm, cnn_bilstm, simple_cnn
   weights_path: "./weights/custom_model/deepfake_detector.h5"
   
   # CNN parameters
@@ -99,7 +100,7 @@ model_custom:
   save_best_only: true
   
   # Strategy
-  use_progressive: true
+  use_progressive: false
   baseline_threshold: 0.75
   validation_split: 0.0    # Use dev set
 

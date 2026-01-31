@@ -61,8 +61,11 @@ def plot_training_history(history, save_path):
 def get_model_config(config):
     # Map new config structure to what logic expects if needed
     # Our trainer expects a dict with 'model' key containing parameters
-    # The new config has 'model_custom'
-    return {'model': config['model_custom']}
+    # and also needs 'app' for GPU settings
+    return {
+        'model': config['model_custom'],
+        'app': config.get('app', {})
+    }
 
 def progressive_training_strategy(config, X_train, y_train, X_val, y_val):
     print("\n" + "="*60)

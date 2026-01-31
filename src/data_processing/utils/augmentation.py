@@ -14,10 +14,18 @@ def add_noise(data, noise_factor=0.005):
 
 def time_stretch(data, rate=1.1):
     """Time-stretch audio"""
+    # Ensure minimum length before time stretching
+    min_length = 4096
+    if len(data) < min_length:
+        data = np.pad(data, (0, min_length - len(data)), mode='constant')
     return librosa.effects.time_stretch(data, rate=rate)
 
 def pitch_shift(data, sr, n_steps=2):
     """Pitch-shift audio"""
+    # Ensure minimum length before pitch shifting
+    min_length = 4096
+    if len(data) < min_length:
+        data = np.pad(data, (0, min_length - len(data)), mode='constant')
     return librosa.effects.pitch_shift(data, sr=sr, n_steps=n_steps)
 
 def codec_simulation(data, sr, codec='opus', bitrate='16k'):
@@ -65,6 +73,11 @@ def apply_augmentation(data, sr, config):
     """
     if not config['augmentation']['enabled']:
         return data
+    
+    # Ensure minimum length before any augmentation
+    min_length = 4096
+    if len(data) < min_length:
+        data = np.pad(data, (0, min_length - len(data)), mode='constant')
     
     aug_config = config['augmentation']['techniques']
     

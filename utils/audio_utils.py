@@ -77,6 +77,34 @@ def normalize_audio(audio):
     return audio
 
 
+
+def remove_silence(audio, top_db=30):
+    """
+    Remove silence from audio using librosa
+    
+    Args:
+        audio: Audio waveform
+        top_db: The threshold (in decibels) below reference to consider as silence
+        
+    Returns:
+        Audio with silence removed
+    """
+    # librosa.effects.split returns intervals of non-silent audio
+    intervals = librosa.effects.split(audio, top_db=top_db)
+    
+    if len(intervals) == 0:
+        return audio
+        
+    # Concatenate non-silent intervals
+    non_silent_audio = np.concatenate([audio[start:end] for start, end in intervals])
+    
+    # If the result is too short, return original to avoid errors
+    if len(non_silent_audio) < 1000:
+        return audio
+        
+    return non_silent_audio
+
+
 def preprocess_audio(file_path, target_sr=16000, target_length=64600):
     """
     Complete preprocessing pipeline for audio
@@ -91,6 +119,9 @@ def preprocess_audio(file_path, target_sr=16000, target_length=64600):
     """
     # Load audio
     audio, sr = load_audio(file_path, target_sr)
+    
+    # Remove silence
+    audio = remove_silence(audio)
     
     # Normalize
     audio = normalize_audio(audio)

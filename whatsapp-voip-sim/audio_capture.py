@@ -13,7 +13,7 @@ current_dir = Path(__file__).parent
 parent_dir = current_dir.parent
 sys.path.append(str(parent_dir))
 
-from ensemble_detector import EnsembleDetector
+from ensemble_detector import DeepfakeDetector
 
 # Configuration
 DEVICE_INDEX = 25
@@ -24,15 +24,16 @@ BUFFER_SIZE = 48000  # 1 second at 48kHz
 buffer = []
 
 # Initialize Detector
-print("Initializing Ensemble Detector...")
-# Change working directory to root so weights can be found
-os.chdir(parent_dir)
+print("Initializing Deepfake Detector...")
+
+# Define paths
+weight_path = parent_dir / 'weights' / 'librifake_pretrained_lambda0.5_epoch_25.pth'
+config_path = parent_dir / 'models' / 'model_config_RawNet.yaml'
 
 try:
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    detector = EnsembleDetector(device=device)
-    detector.load_aasist()
-    detector.load_vocoder()
+    detector = DeepfakeDetector(device=device)
+    detector.load_model(weight_path=str(weight_path), config_path=str(config_path))
     print("Detector initialized successfully.")
 except Exception as e:
     print(f"Failed to initialize detector: {e}")

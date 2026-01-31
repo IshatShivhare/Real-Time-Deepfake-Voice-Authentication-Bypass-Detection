@@ -45,8 +45,8 @@ class EnsembleDetector:
                 # Default AASIST-L config
                 model_config = {
                     'first_conv': 128,
-                    'filts': [70, [1, 32], [32, 32], [32, 64], [64, 64]],
-                    'gat_dims': [80, 160],
+                    'filts': [70, [1, 32], [32, 32], [32, 24], [24, 24]],
+                    'gat_dims': [24, 32],
                     'pool_ratios': [0.5, 0.5, 0.5],
                     'temperatures': [1.0, 1.0, 1.0],
                     'nb_samp': 64600,

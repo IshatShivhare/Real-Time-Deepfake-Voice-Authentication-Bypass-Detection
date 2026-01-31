@@ -13,13 +13,13 @@ model:
     - 70              # First Sinc conv output channels
     - [1, 32]         # Block 1
     - [32, 32]        # Block 2
-    - [32, 64]        # Block 3
-    - [64, 64]        # Blocks 4-6
+    - [32, 24]        # Block 3 (Fixed: 64 -> 24)
+    - [24, 24]        # Blocks 4-6 (Fixed: 64 -> 24)
   
   # Graph Attention dimensions
   gat_dims:
-    - 80              # First GAT dimension
-    - 160             # Second GAT dimension
+    - 24              # First GAT dimension (Fixed: 80 -> 24)
+    - 32              # Second GAT dimension (Fixed: 160 -> 32)
   
   # Graph pooling ratios
   pool_ratios:

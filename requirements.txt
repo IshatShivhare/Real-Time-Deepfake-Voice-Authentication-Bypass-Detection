@@ -1,5 +1,14 @@
-torch>=1.6.0
+torch
 numpy
 soundfile
 librosa
 pyyaml
+scikit-learn
+tqdm
+matplotlib
+seaborn
+joblib
+tensorflow
+streamlit
+sounddevice
+pydub

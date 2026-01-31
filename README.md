@@ -1,204 +1,111 @@
-# Deepfake Audio Detector
+# Deepfake Voice Detection System
 
-A deepfake audio detection system using the **Vocoder-Artifacts (RawNet)** model for accurate TTS and voice synthesis detection.
+A complete, end-to-end system for detecting deepfake audio, featuring a real-time GUI, comprehensive data processing pipeline, and an ensemble model architecture (RawNet Vocoder + Custom CNN-GRU).
 
-## 🎯 Features
+## 🚀 Key Features
 
-- **Vocoder-Artifacts Detection**: Specialized in detecting neural vocoder artifacts from TTS systems
-- **Pretrained Weights**: Ready to use with included model weights
-- **Silence Removal**: Automatic preprocessing to focus on speech content
-- **Easy to Use**: Simple command-line interface
-- **High Accuracy**: Excellent performance on synthetic voice detection
+- **Ensemble Detection**: Combines a pretrained Vocoder-Artifacts model (RawNet) with a custom trainable CNN-GRU model for robust detection.
+- **Data Processing Pipeline**: Full ETL pipeline to download, organize, feature-extract, and prepare the ASVspoof 2019 dataset.
+- **Real-Time GUI**: Streamlit-based web interface for live audio analysis.
+- **Modular Architecture**: Clean, scalable `src/` directory structure with centralized configuration.
+- **Configurable**: All system parameters controlled via `config.yaml`.
 
-## 📁 Project Structure
+## 📂 Project Structure
 
 ```
-ensemble-deepfake-detector/
-├── models/
-│   ├── vocoder_model.py         # Vocoder-Artifacts (RawNet) architecture
-│   └── model_config_RawNet.yaml # Model configuration
-├── weights/
-│   └── librifake_pretrained_lambda0.5_epoch_25.pth  # Pretrained weights
-├── utils/
-│   └── audio_utils.py          # Audio preprocessing utilities
-├── examples/
-│   └── (place test audio files here)
-├── ensemble_detector.py        # Main inference script
-├── requirements.txt
-└── README.md
+Deepfake Voice Detection/
+├── config.yaml          # Central configuration for data, models, and app
+├── main.py              # Main entry point (CLI)
+├── requirements.txt     # Python dependencies
+├── README.md            # Project documentation
+├── weights/             # Model weights
+│   ├── custom_model/
+│   └── vocoder_model/
+└── src/                 # Source Code
+    ├── audio/           # Audio capture and preprocessing
+    ├── data_processing/ # ETL Pipeline (Download, Extract, Prepare)
+    ├── gui/             # Streamlit Web Application
+    ├── models/          # Model architectures
+    │   ├── custom/      # CNN+GRU Model
+    │   ├── vocoder/     # RawNet Model
+    │   └── ensemble.py  # Ensemble Logic
+    └── utils/           # Shared utilities (Logger, Config Loader)
 ```
 
-## 🚀 Quick Start
+## 🛠️ Installation
 
-### 1. Install Dependencies
+1.  **Clone the repository** (or download source).
+2.  **Install dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    ```
+    *Note: For GPU support, ensure you have the correct CUDA-enabled version of PyTorch and TensorFlow.*
+
+## 🚦 Usage
+
+All interactions are handled through the `main.py` entry point.
+
+### 1. Web GUI (Real-Time Detection)
+Launch the Streamlit interface to record or upload audio for analysis.
+```bash
+python main.py gui
+```
+
+### 2. Single File Detection
+Analyze a specific audio file from the command line.
+```bash
+python main.py detect --audio "path/to/audio.wav"
+```
+
+### 3. Data Pipeline (ETL)
+Run the full data processing pipeline to prepare the ASVspoof 2019 dataset.
+Configuration for dataset paths is in `config.yaml`.
 
 ```bash
-pip install -r requirements.txt
+# Run all steps (Organize -> Extract -> Prepare)
+python main.py pipeline
+
+# Run specific steps
+python main.py pipeline --steps organize,extract
 ```
 
-### 2. Run Detection
+### 4. Model Training
+Train the custom CNN-GRU model using the prepared dataset.
+The training uses a **Progressive Strategy**: starts with a simple model and increases complexity only if needed.
 
 ```bash
-python ensemble_detector.py --audio path/to/your/audio.wav
+python main.py train
 ```
 
-Or with full path:
+## ⚙️ Configuration
 
-```bash
-python ensemble_detector.py --audio "C:\path\to\audio.mp3"
-```
+The `config.yaml` file controls all aspects of the system:
 
-## 💡 Usage Examples
+*   **`dataset`**: Paths and sample limits for ASVspoof.
+*   **`audio`**: Sample rate, chunk duration, and FFT settings.
+*   **`features`**: Toggles for MFCC, Spectral, Temporal, and Chroma features.
+*   **`model_custom`**: Architecture (CNN-GRU/LSTM), hyperparameters, and training settings.
+*   **`model_vocoder`**: Settings for the RawNet model.
+*   **`ensemble`**: Weights for combining model predictions.
 
-### Basic Detection
+## 🧠 Model Details
 
-```bash
-python ensemble_detector.py --audio examples/test_audio.wav
-```
+### Ensemble Approach
+The system uses a weighted average of two models:
+1.  **Vocoder Model (RawNet)**: Detects artifacts left by neural vocoders (e.g., WaveNet, HiFi-GAN). Operates on raw waveforms.
+2.  **Custom Model (CNN-GRU)**: Learns temporal and spectral patterns from extracted features (MFCCs, etc.).
 
-### Specify Device
-
-```bash
-# Use GPU
-python ensemble_detector.py --audio test.wav --device cuda
-
-# Use CPU
-python ensemble_detector.py --audio test.wav --device cpu
-```
-
-## 🧠 How It Works
-
-### Vocoder-Artifacts Model
-- **Purpose**: Detects neural vocoder artifacts in synthetic speech
-- **Strength**: Highly effective against TTS and voice cloning systems
-- **Architecture**: Modified RawNet2 with SincConv layers
-- **Training**: Pretrained on LibriFake dataset
-- **Performance**: Excellent detection of modern deepfake audio
-
-### Preprocessing Pipeline
-
-1. **Audio Loading**: Supports WAV, MP3, FLAC, and other formats
-2. **Resampling**: Converts to 16kHz sample rate
-3. **Silence Removal**: Removes silent segments using Voice Activity Detection
-4. **Normalization**: Amplitude normalization to [-1, 1]
-5. **Padding/Trimming**: Fixed length input (64,600 samples ≈ 4 seconds)
-
-## 📊 Example Output
-
-```
-Using device: cpu
-Loading Vocoder-Artifacts (RawNet) model...
-[OK] Model weights loaded from weights/librifake_pretrained_lambda0.5_epoch_25.pth
-
-Analyzing: C:\Users\...\audio.mp3
---------------------------------------------------
-
-Final Prediction: FAKE (Deepfake)
-Confidence: 99.99%
-
-Probabilities:
-  Real: 0.01%
-  Fake: 99.99%
-```
-
-## 🔧 Using in Your Code
-
-```python
-from ensemble_detector import DeepfakeDetector
-
-# Initialize
-detector = DeepfakeDetector(device='cuda')
-detector.load_model()
-
-# Predict single file
-prediction, confidence, details = detector.predict_single('audio.wav')
-
-if prediction == 1:
-    print(f"FAKE audio detected with {confidence:.2%} confidence")
-    print(f"Fake probability: {details['fake_probability']:.2%}")
-else:
-    print(f"REAL audio with {confidence:.2%} confidence")
-    print(f"Real probability: {details['real_probability']:.2%}")
-
-# Predict multiple files
-audio_files = ['audio1.wav', 'audio2.wav', 'audio3.wav']
-results = detector.predict_batch(audio_files)
-
-for i, (pred, conf, details) in enumerate(results):
-    result_text = "FAKE" if pred == 1 else "REAL"
-    print(f"{audio_files[i]}: {result_text} ({conf:.2%})")
-```
-
-## 📝 Technical Details
-
-### Model Architecture
-
-The Vocoder-Artifacts model uses:
-- **SincConv**: Learnable mel-scale filterbank convolution
-- **Residual Blocks**: Deep feature extraction
-- **Attention Mechanism**: Focus on discriminative features
-- **GRU Layers**: Temporal modeling
-- **Binary Classification**: Real vs Fake output
-
-### Supported Audio Formats
-
-- WAV (recommended)
-- MP3
-- FLAC
-- MPEG
-- Any format supported by librosa/soundfile
-
-### Performance Characteristics
-
-- **Input**: 16kHz mono audio, ~4 seconds
-- **Processing Time**: ~0.5-2 seconds per file (CPU)
-- **Memory**: ~500MB (model loaded)
-- **Accuracy**: High precision on TTS-generated audio
-
-## 🎓 Model Reference
-
-### Vocoder-Artifacts Detection
-Based on research in neural vocoder artifact detection for synthetic speech identification.
-
-**Key Insight**: Modern TTS systems use neural vocoders (WaveNet, HiFi-GAN, etc.) that leave subtle artifacts in the generated audio. This model is trained to detect these artifacts.
+### Progressive Training
+To avoid overfitting and waste resources, the training script checks validation accuracy:
+1.  **Stage 1**: Trains a Simple CNN. If baseline threshold is met, it stops.
+2.  **Stage 2**: If needed, trains a CNN-GRU.
+3.  **Stage 3**: If needed, trains a CNN-BiLSTM (most complex).
 
 ## 📄 License
 
-MIT License - Free to use for research and applications
-
-## 🆘 Troubleshooting
-
-### "Model not loaded with weights!"
-- Make sure `weights/librifake_pretrained_lambda0.5_epoch_25.pth` exists
-- Check file permissions
-
-### CUDA out of memory
-- Use `--device cpu` flag
-- Process shorter audio clips
-
-### Audio format not supported
-- Convert to WAV format using: `ffmpeg -i input.mp3 output.wav`
-- Ensure audio is not corrupted
-
-### UnicodeEncodeError on Windows
-- This has been fixed in the latest version
-- If you still see it, ensure you're using Python 3.7+
-
-### Always predicting "Real"
-- Ensure the audio contains speech (silence is often classified as real)
-- Check that the audio is not corrupted
-- Try with a known synthetic audio sample
-
-## 🚀 Future Improvements
-
-- [ ] Add batch processing with progress bar
-- [ ] Support for streaming audio
-- [ ] Web interface for easy testing
-- [ ] Additional preprocessing options
-- [ ] Model quantization for faster inference
+MIT License.
 
 ## 🙏 Acknowledgments
 
-- RawNet architecture from anti-spoofing research
-- LibriFake dataset for pretraining
-- ASVspoof challenge for evaluation protocols
+-   **ASVspoof 2019**: Dataset and protocols.
+-   **RawNet**: Base architecture for vocoder artifact detection.

@@ -7,7 +7,7 @@ import logging
 from src.utils.config_loader import get_config
 from src.utils.logger import setup_logger
 
-from src.data_processing.download_organize import organize_asvspoof_data
+from src.data_processing.download_organize import organize_data
 from src.data_processing.extract_features import run_extraction
 from src.data_processing.prepare_final import run_preparation
 # Assuming prepare_final has a main function or we need to expose one
@@ -24,7 +24,7 @@ def run_pipeline(steps=None):
     
     if 'organize' in steps:
         logger.info("Running Step 1: Organization")
-        if not organize_asvspoof_data(config):
+        if not organize_data(config):
             logger.error("Organization failed. Aborting.")
             return False
             

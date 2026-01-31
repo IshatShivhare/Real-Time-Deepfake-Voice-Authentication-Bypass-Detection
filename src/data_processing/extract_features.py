@@ -19,28 +19,41 @@ def process_single_file(file_path, label, config, apply_aug=False):
     Process a single audio file
     """
     try:
-        # Load audio
         sr = config['audio']['sample_rate']
-        try:
-           audio, _ = librosa.load(file_path, sr=sr)
-        except Exception:
-           # Fallback if librosa fails (sometimes happens with flac on windows)
-           import soundfile as sf
-           audio, samplerate = sf.read(file_path)
-           if samplerate != sr:
-               audio = librosa.resample(audio, orig_sr=samplerate, target_sr=sr)
         
-        # Apply augmentation if enabled
+        # Load audio
+        try:
+            audio, _ = librosa.load(file_path, sr=sr)
+        except Exception:
+            # Fallback if librosa fails (sometimes happens with flac on windows)
+            import soundfile as sf
+            audio, samplerate = sf.read(file_path)
+            if samplerate != sr:
+                audio = librosa.resample(audio, orig_sr=samplerate, target_sr=sr)
+        
+        # Skip only truly invalid files (< 100 samples)
+        if len(audio) < 100:
+            return None
+        
+        # Apply augmentation FIRST (if enabled)
         if apply_aug:
             audio = apply_augmentation(audio, sr, config)
         
-        # Extract features
+        # THEN pad to safe length AFTER augmentation
+        # This ensures time_stretch doesn't leave us with short audio
+        n_fft = config['audio'].get('n_fft', 2048)
+        min_safe_length = max(8192, n_fft * 4)  # Extra safety margin
+        
+        if len(audio) < min_safe_length:
+            audio = np.pad(audio, (0, min_safe_length - len(audio)), mode='constant')
+        
+        # Extract features - now audio is guaranteed to be long enough
         features = extract_all_features(audio, sr, config)
         
         return features, label
     
     except Exception as e:
-        # print(f"Error processing {file_path}: {e}") # Reduce noise
+        # Silently skip problematic files
         return None
 
 def extract_features_for_split(split_name, config):
@@ -50,8 +63,9 @@ def extract_features_for_split(split_name, config):
     
     data_path = Path(config['dataset']['output_path']) / split_name
     
-    bonafide_files = list((data_path / 'bonafide').glob('*.flac'))
-    spoof_files = list((data_path / 'spoof').glob('*.flac'))
+    file_ext = config['dataset'].get('file_extension', 'flac')
+    bonafide_files = list((data_path / 'bonafide').glob(f'*.{file_ext}'))
+    spoof_files = list((data_path / 'spoof').glob(f'*.{file_ext}'))
     
     file_label_pairs = []
     for f in bonafide_files:
@@ -67,12 +81,12 @@ def extract_features_for_split(split_name, config):
     # But retaining parallel execution
     
     apply_aug = config['augmentation']['enabled'] and config['augmentation']['train_only'] and split_name == 'train'
-    n_jobs = config['processing']['n_jobs']
     
-    # Process in chunks or all at once? All at once is fine for <10k files usually
-    # But better to use batching for memory safety if dataset is huge.
+    # Use only 2 jobs for maximum stability on Windows
+    n_jobs = 2
     
-    results = Parallel(n_jobs=n_jobs)(
+    # Use threading backend for better stability on Windows with librosa
+    results = Parallel(n_jobs=n_jobs, backend='threading', verbose=0)(
         delayed(process_single_file)(file_path, label, config, apply_aug)
         for file_path, label in tqdm(file_label_pairs, desc=f"   Extracting {split_name}")
     )
@@ -86,6 +100,11 @@ def extract_features_for_split(split_name, config):
             features_list.append(features)
             labels_list.append(label)
             
+    skipped_count = len(file_label_pairs) - len(features_list)
+    if skipped_count > 0:
+        print(f"   ⚠️  Skipped {skipped_count} short/invalid files")
+    print(f"   ✓ Extracted: {len(features_list)} files")
+
     return np.array(features_list), np.array(labels_list)
 
 def run_extraction(config=None):

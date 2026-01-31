@@ -1,25 +1,24 @@
-# Ensemble Deepfake Audio Detector
+# Deepfake Audio Detector
 
-A robust deepfake audio detection system combining **AASIST-L** and **Vocoder-Artifacts** models for superior accuracy.
+A deepfake audio detection system using the **Vocoder-Artifacts (RawNet)** model for accurate TTS and voice synthesis detection.
 
 ## 🎯 Features
 
-- **Dual-Model Ensemble**: Combines AASIST-L (general deepfake detection) with Vocoder-Artifacts (TTS-specific detection)
-- **Multiple Ensemble Strategies**: Weighted average, voting, and max-confidence methods
-- **Pretrained Weights**: Ready to use with included AASIST-L weights
+- **Vocoder-Artifacts Detection**: Specialized in detecting neural vocoder artifacts from TTS systems
+- **Pretrained Weights**: Ready to use with included model weights
+- **Silence Removal**: Automatic preprocessing to focus on speech content
 - **Easy to Use**: Simple command-line interface
+- **High Accuracy**: Excellent performance on synthetic voice detection
 
 ## 📁 Project Structure
 
 ```
 ensemble-deepfake-detector/
 ├── models/
-│   ├── aasist_model.py          # AASIST-L architecture
-│   ├── vocoder_model.py         # Vocoder-Artifacts (RawNet2) architecture
-│   └── model_config_RawNet.yaml # Vocoder model config
+│   ├── vocoder_model.py         # Vocoder-Artifacts (RawNet) architecture
+│   └── model_config_RawNet.yaml # Model configuration
 ├── weights/
-│   ├── AASIST-L.pth            # ✓ Included (pretrained)
-│   └── vocoder_model.pth       # ⚠ Download required (see below)
+│   └── librifake_pretrained_lambda0.5_epoch_25.pth  # Pretrained weights
 ├── utils/
 │   └── audio_utils.py          # Audio preprocessing utilities
 ├── examples/
@@ -37,19 +36,16 @@ ensemble-deepfake-detector/
 pip install -r requirements.txt
 ```
 
-### 2. Download Vocoder Weights (Optional but Recommended)
-
-The AASIST-L weights are already included. For best results, also download the Vocoder model weights:
-
-1. Download from: https://drive.google.com/file/d/15qOi26czvZddIbKP_SOR8SLQFZK8cf8E/view
-2. Save as: `weights/vocoder_model.pth`
-
-**Note**: The system will work with AASIST-L alone if you don't download the Vocoder weights.
-
-### 3. Run Detection
+### 2. Run Detection
 
 ```bash
 python ensemble_detector.py --audio path/to/your/audio.wav
+```
+
+Or with full path:
+
+```bash
+python ensemble_detector.py --audio "C:\path\to\audio.mp3"
 ```
 
 ## 💡 Usage Examples
@@ -58,19 +54,6 @@ python ensemble_detector.py --audio path/to/your/audio.wav
 
 ```bash
 python ensemble_detector.py --audio examples/test_audio.wav
-```
-
-### Choose Ensemble Method
-
-```bash
-# Weighted average (default, recommended)
-python ensemble_detector.py --audio test.wav --method weighted_average
-
-# Simple voting
-python ensemble_detector.py --audio test.wav --method voting
-
-# Max confidence
-python ensemble_detector.py --audio test.wav --method max_confidence
 ```
 
 ### Specify Device
@@ -85,121 +68,137 @@ python ensemble_detector.py --audio test.wav --device cpu
 
 ## 🧠 How It Works
 
-### Model 1: AASIST-L
-- **Purpose**: General-purpose deepfake detection
-- **Strength**: Detects various types of audio spoofing attacks
-- **Architecture**: Graph Attention Networks
-- **Parameters**: 85,306 (lightweight!)
-- **Performance**: EER 0.99% on ASVspoof 2019
+### Vocoder-Artifacts Model
+- **Purpose**: Detects neural vocoder artifacts in synthetic speech
+- **Strength**: Highly effective against TTS and voice cloning systems
+- **Architecture**: Modified RawNet2 with SincConv layers
+- **Training**: Pretrained on LibriFake dataset
+- **Performance**: Excellent detection of modern deepfake audio
 
-### Model 2: Vocoder-Artifacts
-- **Purpose**: Specialized TTS (Text-to-Speech) detection
-- **Strength**: Identifies neural vocoder artifacts
-- **Architecture**: Modified RawNet2
-- **Performance**: EER 4.54% on ASVspoof 2019
+### Preprocessing Pipeline
 
-### Ensemble Strategy
-
-The system combines both models using:
-
-1. **Weighted Average** (default): AASIST-L gets 60% weight, Vocoder gets 40%
-2. **Voting**: Simple majority vote
-3. **Max Confidence**: Uses the most confident model's prediction
+1. **Audio Loading**: Supports WAV, MP3, FLAC, and other formats
+2. **Resampling**: Converts to 16kHz sample rate
+3. **Silence Removal**: Removes silent segments using Voice Activity Detection
+4. **Normalization**: Amplitude normalization to [-1, 1]
+5. **Padding/Trimming**: Fixed length input (64,600 samples ≈ 4 seconds)
 
 ## 📊 Example Output
 
 ```
-Using device: cuda
-Loading AASIST-L model...
-✓ AASIST-L weights loaded from weights/AASIST-L.pth
-Loading Vocoder-Artifacts model...
-✓ Vocoder model weights loaded from weights/vocoder_model.pth
+Using device: cpu
+Loading Vocoder-Artifacts (RawNet) model...
+[OK] Model weights loaded from weights/librifake_pretrained_lambda0.5_epoch_25.pth
 
-Analyzing: examples/test_audio.wav
+Analyzing: C:\Users\...\audio.mp3
 --------------------------------------------------
 
-🎯 Final Prediction: FAKE (Deepfake)
-📊 Confidence: 87.34%
+Final Prediction: FAKE (Deepfake)
+Confidence: 99.99%
 
-📋 Individual Model Results:
-  • AASIST: FAKE (92.15% confidence)
-  • VOCODER: FAKE (78.43% confidence)
-
-⚙️  Ensemble Method: weighted_average
+Probabilities:
+  Real: 0.01%
+  Fake: 99.99%
 ```
 
 ## 🔧 Using in Your Code
 
 ```python
-from ensemble_detector import EnsembleDetector
+from ensemble_detector import DeepfakeDetector
 
 # Initialize
-detector = EnsembleDetector(device='cuda')
-detector.load_aasist()
-detector.load_vocoder()
+detector = DeepfakeDetector(device='cuda')
+detector.load_model()
 
 # Predict single file
 prediction, confidence, details = detector.predict_single('audio.wav')
 
 if prediction == 1:
     print(f"FAKE audio detected with {confidence:.2%} confidence")
+    print(f"Fake probability: {details['fake_probability']:.2%}")
 else:
     print(f"REAL audio with {confidence:.2%} confidence")
+    print(f"Real probability: {details['real_probability']:.2%}")
 
 # Predict multiple files
 audio_files = ['audio1.wav', 'audio2.wav', 'audio3.wav']
 results = detector.predict_batch(audio_files)
+
+for i, (pred, conf, details) in enumerate(results):
+    result_text = "FAKE" if pred == 1 else "REAL"
+    print(f"{audio_files[i]}: {result_text} ({conf:.2%})")
 ```
 
-## 📝 Notes for Hackathon
+## 📝 Technical Details
 
-### Advantages of This Approach
+### Model Architecture
 
-1. **No Dataset Required**: Uses pretrained weights, no need to download 6.4GB LA.zip
-2. **Fast Setup**: Ready to demo in minutes
-3. **Robust**: Dual-model approach catches more deepfakes than single models
-4. **Lightweight**: AASIST-L is optimized for speed
-5. **Flexible**: Can work with just AASIST-L if Vocoder weights unavailable
+The Vocoder-Artifacts model uses:
+- **SincConv**: Learnable mel-scale filterbank convolution
+- **Residual Blocks**: Deep feature extraction
+- **Attention Mechanism**: Focus on discriminative features
+- **GRU Layers**: Temporal modeling
+- **Binary Classification**: Real vs Fake output
 
-### Presentation Tips
+### Supported Audio Formats
 
-- Emphasize the **ensemble approach** - combining general + specialized detection
-- Show **live demo** with real and fake audio samples
-- Highlight **no training required** - leverages SOTA pretrained models
-- Mention **real-world applicability** - can detect various deepfake types
+- WAV (recommended)
+- MP3
+- FLAC
+- MPEG
+- Any format supported by librosa/soundfile
 
-## 🎓 Model References
+### Performance Characteristics
 
-### AASIST
-```
-Jung et al. (2021)
-"AASIST: Audio Anti-Spoofing using Integrated Spectro-Temporal Graph Attention Networks"
-Interspeech 2021
-```
+- **Input**: 16kHz mono audio, ~4 seconds
+- **Processing Time**: ~0.5-2 seconds per file (CPU)
+- **Memory**: ~500MB (model loaded)
+- **Accuracy**: High precision on TTS-generated audio
 
-### Vocoder-Artifacts
-```
-Sun et al. (2023)
-"AI-Synthesized Voice Detection Using Neural Vocoder Artifacts"
-CVPRW 2023
-```
+## 🎓 Model Reference
+
+### Vocoder-Artifacts Detection
+Based on research in neural vocoder artifact detection for synthetic speech identification.
+
+**Key Insight**: Modern TTS systems use neural vocoders (WaveNet, HiFi-GAN, etc.) that leave subtle artifacts in the generated audio. This model is trained to detect these artifacts.
 
 ## 📄 License
 
-MIT License - Free to use for hackathons and research
+MIT License - Free to use for research and applications
 
 ## 🆘 Troubleshooting
 
-### "No models loaded with weights!"
-- Make sure `weights/AASIST-L.pth` exists
-- Download Vocoder weights if needed
+### "Model not loaded with weights!"
+- Make sure `weights/librifake_pretrained_lambda0.5_epoch_25.pth` exists
+- Check file permissions
 
 ### CUDA out of memory
 - Use `--device cpu` flag
 - Process shorter audio clips
 
 ### Audio format not supported
-- Convert to WAV format
-- Supported: WAV, FLAC, MP3 (via librosa)
+- Convert to WAV format using: `ffmpeg -i input.mp3 output.wav`
+- Ensure audio is not corrupted
 
-## 🏆 Good Luck at Your Hackathon!
+### UnicodeEncodeError on Windows
+- This has been fixed in the latest version
+- If you still see it, ensure you're using Python 3.7+
+
+### Always predicting "Real"
+- Ensure the audio contains speech (silence is often classified as real)
+- Check that the audio is not corrupted
+- Try with a known synthetic audio sample
+
+## 🚀 Future Improvements
+
+- [ ] Add batch processing with progress bar
+- [ ] Support for streaming audio
+- [ ] Web interface for easy testing
+- [ ] Additional preprocessing options
+- [ ] Model quantization for faster inference
+
+## 🙏 Acknowledgments
+
+- RawNet architecture from anti-spoofing research
+- LibriFake dataset for pretraining
+- ASVspoof challenge for evaluation protocols

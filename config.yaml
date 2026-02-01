@@ -51,7 +51,7 @@ augmentation:
       probability: 0.2
       rate_range: [0.9, 1.1]
     pitch_shift:
-      enabled: false       # Disabled for speed
+      enabled: true       # Disabled for speed
       probability: 0.0
       semitone_range: [-2, 2]
     codec_simulation:
@@ -61,7 +61,7 @@ augmentation:
       bitrate: "16k"
 
 processing:
-  n_jobs: 4                # Parallel processing cores
+  n_jobs: 8                # Parallel processing cores
   checkpoint_interval: 500
   resume_from_checkpoint: true
 
@@ -87,7 +87,7 @@ model_custom:
   
   # Dense layers
   dense_units: [64]
-  dropout_rate: 0.5
+  dropout_rate: 0.6
   dropout_rnn: 0.3
   
   # Training
@@ -129,6 +129,6 @@ model_vocoder:
 ensemble:
   method: "weighted_average" # or "voting", "stacking"
   weights: 
-    custom: 0.5      # Your trained CNN+GRU model
-    vocoder: 0.5     # Pretrained RawNet vocoder model
+    custom: 0.6      # Your trained CNN+GRU model
+    vocoder: 0.4     # Pretrained RawNet vocoder model
   threshold: 0.5

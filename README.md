@@ -1,111 +1,233 @@
-# Deepfake Voice Detection System
+# Real-Time Deepfake Voice Detection System
 
-A complete, end-to-end system for detecting deepfake audio, featuring a real-time GUI, comprehensive data processing pipeline, and an ensemble model architecture (RawNet Vocoder + Custom CNN-GRU).
+A production-ready system for detecting AI-generated (deepfake) voices in real-time, designed to protect voice authentication systems from sophisticated audio synthesis attacks.
+
+---
+
+## 🎯 The Problem: Deepfake Voice Threat
+
+### What are Deepfake Voices?
+
+Deepfake voices are AI-generated synthetic speech that mimics real human voices with alarming accuracy. Modern neural vocoders (WaveNet, HiFi-GAN, Tacotron) can clone anyone's voice from just seconds of audio.
+
+### Why This Matters
+
+**Voice authentication systems are under attack:**
+
+- 🏦 **Banking & Finance**: Voice biometric authentication can be bypassed.
+- 📱 **VoIP Services**: WhatsApp, Telegram, Zoom calls can be spoofed.
+- 🎭 **Identity Fraud**: Attackers impersonate executives or family members.
+
+### The Challenge
+
+**Real-time systems must:**
+- ✅ Operate on short audio samples (3-10 seconds).
+- ✅ Handle network noise and codec artifacts.
+- ✅ Distinguish synthetic voices from natural variations.
+- ✅ Detect modern neural vocoder artifacts with low latency.
+
+---
+
+## 💡 Our Solution
+
+### Three-Layer Detection Strategy
+
+#### 1. **Vocoder Artifact Detection (RawNet / Librifake)**
+- Targets artifacts left by neural vocoders during audio synthesis.
+- Utilizes a pretrained model (e.g., RawNet2 architecture trained on Librifake dataset) to analyze raw waveform anomalies.
+
+#### 2. **Acoustic Feature Analysis (CNN / CNN-GRU)**
+- Extracts acoustic features (MFCCs, spectral characteristics, temporal patterns).
+- Learns discriminative patterns through deep learning.
+- **Configurable Architectures**: Supports Simple CNN (fast baseline), CNN-GRU, CNN-LSTM, and CNN-BiLSTM.
+
+#### 3. **Ensemble Intelligence**
+- **Inference**: Combines outputs using a weighted average strategy.
+- **Configuration**: Adjustable weights (default: Custom Model 0.6, Vocoder Model 0.4) to balance detection sensitivity.
+
+### Key Technical Innovations
+
+**🎯 Real-Time Pipeline**
+```
+Audio Stream → Buffer (3s) → Feature Extraction → 
+Dual Model Inference → Ensemble Decision → Alert/Allow
+```
+
+**🛡️ Robustness Features**
+- **Data Augmentation**: Includes noise injection, time stretching, and codec simulation (Opus) to mimic real VoIP conditions.
+- **Class Imbalance Handling**: Weighted training and sampling strategies for imbalanced datasets.
+
+---
 
 ## 🚀 Key Features
 
-- **Ensemble Detection**: Combines a pretrained Vocoder-Artifacts model (RawNet) with a custom trainable CNN-GRU model for robust detection.
-- **Data Processing Pipeline**: Full ETL pipeline to download, organize, feature-extract, and prepare the ASVspoof 2019 dataset.
-- **Real-Time GUI**: Streamlit-based web interface for live audio analysis.
-- **Modular Architecture**: Clean, scalable `src/` directory structure with centralized configuration.
-- **Configurable**: All system parameters controlled via `config.yaml`.
+- **✨ Real-Time Detection**: Designed for low-latency inference suitable for live scenarios.
+- **🔊 Audio Capture**: Interfaces with system audio (supports virtual audio cables).
+- **🖥️ User-Friendly GUI**: Python/Tkinter-based desktop interface for live monitoring and file analysis.
+- **📊 Comprehensive Pipeline**: End-to-end processing: Download -> Organize -> Extract -> Train.
+- **⚙️ Fully Configurable**: `config.yaml` controls datasets, model architectures, and thresholds.
+- **🧩 Modular Design**: Clean `src/` directory structure.
+
+---
 
 ## 📂 Project Structure
-
 ```
 Deepfake Voice Detection/
-├── config.yaml          # Central configuration for data, models, and app
-├── main.py              # Main entry point (CLI)
-├── requirements.txt     # Python dependencies
-├── README.md            # Project documentation
-├── weights/             # Model weights
-│   ├── custom_model/
-│   └── vocoder_model/
-└── src/                 # Source Code
-    ├── audio/           # Audio capture and preprocessing
-    ├── data_processing/ # ETL Pipeline (Download, Extract, Prepare)
-    ├── gui/             # Streamlit Web Application
-    ├── models/          # Model architectures
-    │   ├── custom/      # CNN+GRU Model
-    │   ├── vocoder/     # RawNet Model
-    │   └── ensemble.py  # Ensemble Logic
-    └── utils/           # Shared utilities (Logger, Config Loader)
+├── config.yaml              # Central configuration
+├── main.py                  # CLI entry point
+├── requirements.txt         # Dependencies
+├── README.md
+│
+├── data/                    # Dataset storage
+├── weights/                 # Model weights
+│   ├── custom_model/        # Trained custom weights
+│   └── librifake_...pth     # Pretrained vocoder weights
+│
+└── src/
+    ├── audio/               # Audio capture & processing
+    ├── data_processing/     # ETL Pipeline
+    ├── models/              # Model architectures
+    │   ├── custom/          # CNN/GRU implementations
+    │   ├── vocoder/         # RawNet implementation
+    │   └── ensemble.py      # Ensemble logic
+    ├── gui/                 # Desktop Application (app.py)
+    └── utils/               # Shared utilities
 ```
+
+---
 
 ## 🛠️ Installation
 
-1.  **Clone the repository** (or download source).
-2.  **Install dependencies**:
-    ```bash
-    pip install -r requirements.txt
-    ```
-    *Note: For GPU support, ensure you have the correct CUDA-enabled version of PyTorch and TensorFlow.*
+### Prerequisites
+- Python 3.8+
+- CUDA-capable GPU (Recommended for training)
+- Virtual Audio Cable (e.g., VB-Cable) for VoIP monitoring.
+
+### Setup
+
+1. **Clone the repository**
+2. **Install dependencies**
+```bash
+pip install -r requirements.txt
+```
+3. **Download Pretrained Weights**: Ensure `librifake_pretrained_lambda0.5_epoch_25.pth` is in the `weights/` directory.
+
+---
 
 ## 🚦 Usage
 
-All interactions are handled through the `main.py` entry point.
+### 1. 🎨 Desktop GUI (Live Detection)
 
-### 1. Web GUI (Real-Time Detection)
-Launch the Streamlit interface to record or upload audio for analysis.
+Launch the Tkinter-based real-time detection interface:
 ```bash
-python main.py gui
+python src/gui/app.py
+```
+*Tip: To monitor VoIP calls (Zoom/WhatsApp), route audio through a Virtual Audio Cable and select it as the input device in the GUI.*
+
+### 2. 🔍 Single File Detection (CLI)
+
+Analyze a specific audio file:
+```bash
+python main.py detect --audio "path/to/suspicious_call.wav"
 ```
 
-### 2. Single File Detection
-Analyze a specific audio file from the command line.
-```bash
-python main.py detect --audio "path/to/audio.wav"
-```
+### 3. 📊 Data Pipeline (ETL)
 
-### 3. Data Pipeline (ETL)
-Run the full data processing pipeline to prepare the ASVspoof 2019 dataset.
-Configuration for dataset paths is in `config.yaml`.
+Prepare your dataset (configured in `config.yaml`). The pipeline supports organizing, extracting features, and preparing final data.
 
 ```bash
-# Run all steps (Organize -> Extract -> Prepare)
+# Run complete pipeline
 python main.py pipeline
 
 # Run specific steps
-python main.py pipeline --steps organize,extract
+python main.py pipeline --steps organize,extract,prepare
 ```
+*Note: Feature analysis can be run separately via `src/data_processing/feature_analysis.py` if needed.*
 
-### 4. Model Training
-Train the custom CNN-GRU model using the prepared dataset.
-The training uses a **Progressive Strategy**: starts with a simple model and increases complexity only if needed.
+### 4. 🧠 Model Training
+
+Train the custom model (architecture defined in `config.yaml`):
 
 ```bash
 python main.py train
 ```
+**Configuration Note**: You can switch architectures (e.g., `simple_cnn`, `cnn_gru`) in `config.yaml` under `model_custom`.
 
-## ⚙️ Configuration
+---
 
-The `config.yaml` file controls all aspects of the system:
+## ⚙️ Configuration Guide
 
-*   **`dataset`**: Paths and sample limits for ASVspoof.
-*   **`audio`**: Sample rate, chunk duration, and FFT settings.
-*   **`features`**: Toggles for MFCC, Spectral, Temporal, and Chroma features.
-*   **`model_custom`**: Architecture (CNN-GRU/LSTM), hyperparameters, and training settings.
-*   **`model_vocoder`**: Settings for the RawNet model.
-*   **`ensemble`**: Weights for combining model predictions.
+The `config.yaml` file controls system behavior:
 
-## 🧠 Model Details
+### Dataset Configuration
+```yaml
+dataset:
+  name: "SceneFake"   # or "ASVspoof"
+  time_limit: null    # Seconds to load
+  # ...
+```
 
-### Ensemble Approach
-The system uses a weighted average of two models:
-1.  **Vocoder Model (RawNet)**: Detects artifacts left by neural vocoders (e.g., WaveNet, HiFi-GAN). Operates on raw waveforms.
-2.  **Custom Model (CNN-GRU)**: Learns temporal and spectral patterns from extracted features (MFCCs, etc.).
+### Audio Processing
+```yaml
+audio:
+  sample_rate: 16000
+  chunk_duration: 3.0
+```
 
-### Progressive Training
-To avoid overfitting and waste resources, the training script checks validation accuracy:
-1.  **Stage 1**: Trains a Simple CNN. If baseline threshold is met, it stops.
-2.  **Stage 2**: If needed, trains a CNN-GRU.
-3.  **Stage 3**: If needed, trains a CNN-BiLSTM (most complex).
+### Feature Extraction
+```yaml
+features:
+  n_mfcc: 40
+  extract_spectral: true
+  extract_temporal: true
+  extract_chroma: true
+```
+
+### Model Architecture (`model_custom`)
+```yaml
+model_custom:
+  architecture: "simple_cnn" # Options: simple_cnn, cnn_gru, cnn_lstm
+  conv_filters: [64, 128]
+  rnn_units: 128
+  # ...
+```
+
+### Ensemble Configuration
+```yaml
+ensemble:
+  weights:
+    custom: 0.6    # Weight for Custom Model
+    vocoder: 0.4   # Weight for RawNet Model
+```
+
+---
+
+## 🧠 Technical Details
+
+### Supported Models
+
+#### Custom Model (TensorFlow/Keras)
+- **Simple CNN**: Fast baseline model using 1D convolutions and global pooling.
+- **CNN-GRU**: Combined architecture extracting spatial (CNN) and temporal (GRU) features.
+- **CNN-BiLSTM**: Bidirectional LSTM for enhanced context awareness.
+
+#### Vocoder Detector (RawNet2 / PyTorch)
+- Uses raw waveform analysis to detect synthesis artifacts.
+- Default weights based on Librifake training.
+
+### Pipeline
+1. **Organize**: Structured into train/dev/eval splits.
+2. **Feature Extraction**: Extracts 48+ dimensions of acoustic features.
+3. **Preparation**: Normalization, class balancing (if configured), and formatting for training.
+
+---
 
 ## 📄 License
 
 MIT License.
 
-## 🙏 Acknowledgments
+---
 
--   **ASVspoof 2019**: Dataset and protocols.
--   **RawNet**: Base architecture for vocoder artifact detection.
+## 🔒 Security Notice
+
+This system is a **detection tool**, not a prevention mechanism. It should be used as part of a layered security approach. No deepfake detector is 100% accurate.

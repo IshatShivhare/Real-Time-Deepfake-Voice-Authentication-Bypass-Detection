@@ -20,12 +20,10 @@ from src.utils.config_loader import load_config
 logger = setup_logger("Main")
 
 def run_gui():
-    """Run the Streamlit GUI"""
+    """Run the Tkinter GUI"""
     print("Launching GUI...")
-    # Streamlit needs to be run as a module or script
-    # We use os.system or subprocess to launch streamlit
     app_path = Path("src/gui/app.py").resolve()
-    os.system(f"streamlit run \"{app_path}\"")
+    os.system(f"python \"{app_path}\"")
 
 def run_pipeline(args):
     """Run data processing pipeline"""

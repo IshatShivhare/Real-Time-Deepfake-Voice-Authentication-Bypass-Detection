@@ -32,14 +32,14 @@ Deepfake voices are AI-generated synthetic speech that mimics real human voices 
 
 ### Three-Layer Detection Strategy
 
-#### 1. **Vocoder Artifact Detection (RawNet / Librifake)**
+#### 1. **Vocoder Artifact Detection (RawNet2)**
 - Targets artifacts left by neural vocoders during audio synthesis.
-- Utilizes a pretrained model (e.g., RawNet2 architecture trained on Librifake dataset) to analyze raw waveform anomalies.
+- Utilizes the RawNet2 architecture trained on the ASVspoof 2019 LA dataset to analyze raw waveform anomalies.
 
-#### 2. **Acoustic Feature Analysis (CNN / CNN-GRU)**
-- Extracts acoustic features (MFCCs, spectral characteristics, temporal patterns).
-- Learns discriminative patterns through deep learning.
-- **Configurable Architectures**: Supports Simple CNN (fast baseline), CNN-GRU, CNN-LSTM, and CNN-BiLSTM.
+#### 2. **Acoustic Feature Analysis (Wav2Vec2)**
+- Uses state-of-the-art transformer-based acoustic models (Wav2Vec2).
+- Extracts complex acoustic representations directly from audio to learn discriminative patterns of synthetic voices.
+- Trained on the ASVspoof 2019 LA dataset on Kaggle.
 
 #### 3. **Ensemble Intelligence**
 - **Inference**: Combines outputs using a weighted average strategy.
@@ -80,15 +80,15 @@ Deepfake Voice Detection/
 │
 ├── data/                    # Dataset storage
 ├── weights/                 # Model weights
-│   ├── custom_model/        # Trained custom weights
-│   └── librifake_...pth     # Pretrained vocoder weights
+│   ├── custom_model/        # Wav2Vec2 weights
+│   └── rawnet2_...pth       # Pretrained vocoder weights
 │
 └── src/
     ├── audio/               # Audio capture & processing
     ├── data_processing/     # ETL Pipeline
     ├── models/              # Model architectures
-    │   ├── custom/          # CNN/GRU implementations
-    │   ├── vocoder/         # RawNet implementation
+    │   ├── custom/          # Wav2Vec2 Notebooks & Implementation
+    │   ├── vocoder/         # RawNet2 Notebooks & Implementation
     │   └── ensemble.py      # Ensemble logic
     ├── gui/                 # Desktop Application (app.py)
     └── utils/               # Shared utilities
@@ -110,7 +110,7 @@ Deepfake Voice Detection/
 ```bash
 pip install -r requirements.txt
 ```
-3. **Download Pretrained Weights**: Ensure `librifake_pretrained_lambda0.5_epoch_25.pth` is in the `weights/` directory.
+3. **Download Pretrained Weights**: Pull the latest model weights from Hugging Face or ensure they are present in the `weights/` directory.
 
 ---
 
@@ -144,14 +144,15 @@ python main.py pipeline --steps organize,extract,prepare
 ```
 *Note: Feature analysis can be run separately via `src/data_processing/feature_analysis.py` if needed.*
 
-### 4. 🧠 Model Training
+### 4. 🧠 Model Training (Kaggle & Hugging Face)
 
-Train the custom model (architecture defined in `config.yaml`):
+Model training has been migrated to Kaggle to leverage cloud GPU resources. The trained models are pushed to Hugging Face for seamless integration.
 
-```bash
-python main.py train
-```
-**Configuration Note**: You can switch architectures (e.g., `simple_cnn`, `cnn_gru`) in `config.yaml` under `model_custom`.
+To train or fine-tune the models, run the provided Jupyter Notebooks on Kaggle:
+- **Custom Acoustic Model (Wav2Vec2)**: `src/models/custom/asvspoof-la-2019-on-wav2vec2.ipynb`
+- **Vocoder Detector (RawNet2)**: `src/models/vocoder/rawnet2-on-asvspoof-2019-la.ipynb`
+
+Once trained, models can be pulled from Hugging Face or placed manually in the `weights/` directory for inference.
 
 ---
 
@@ -206,14 +207,13 @@ ensemble:
 
 ### Supported Models
 
-#### Custom Model (TensorFlow/Keras)
-- **Simple CNN**: Fast baseline model using 1D convolutions and global pooling.
-- **CNN-GRU**: Combined architecture extracting spatial (CNN) and temporal (GRU) features.
-- **CNN-BiLSTM**: Bidirectional LSTM for enhanced context awareness.
+#### Custom Acoustic Model (Wav2Vec2 / Transformers)
+- Fine-tuned **Wav2Vec2** model for robust feature extraction and deepfake detection.
+- Trained on the ASVspoof 2019 LA dataset using Kaggle.
 
 #### Vocoder Detector (RawNet2 / PyTorch)
 - Uses raw waveform analysis to detect synthesis artifacts.
-- Default weights based on Librifake training.
+- Trained on the ASVspoof 2019 LA dataset using Kaggle.
 
 ### Pipeline
 1. **Organize**: Structured into train/dev/eval splits.

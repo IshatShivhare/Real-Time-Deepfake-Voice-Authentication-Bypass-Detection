@@ -4,6 +4,7 @@ import sys
 import threading
 import queue
 import os
+import librosa
 from pathlib import Path
 
 # Ensure root is in path
@@ -13,6 +14,9 @@ if str(root_dir) not in sys.path:
 
 from src.audio.capture import AudioCapturer
 from src.utils.logger import get_logger
+from src.utils.config_loader import get_config
+from src.models.model_loader import load_all_models
+from src.models.ensemble import Ensemble
 
 logger = get_logger("GUI_TK")
 
@@ -39,6 +43,9 @@ class DeepfakeDetectorApp:
         
         # Helper map for device selection
         self.device_map = {} # "Name": index
+        
+        self.config = get_config()
+        self.ensemble = None
 
         self._build_ui()
         self._load_devices()
@@ -48,6 +55,38 @@ class DeepfakeDetectorApp:
         
         # Handle close correctly
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        
+        self._show_loading()
+        threading.Thread(target=self._load_models_thread, daemon=True).start()
+
+    def _show_loading(self):
+        self.loading_win = tk.Toplevel(self.root)
+        self.loading_win.title("Loading Models")
+        self.loading_win.geometry("300x100")
+        self.loading_win.resizable(False, False)
+        # Center window
+        self.loading_win.transient(self.root)
+        self.loading_win.grab_set()
+        
+        ttk.Label(self.loading_win, text="Loading models... Please wait.", font=("Helvetica", 12)).pack(pady=20)
+        self.loading_progress = ttk.Progressbar(self.loading_win, mode="indeterminate")
+        self.loading_progress.pack(fill=tk.X, padx=20)
+        self.loading_progress.start(10)
+        self.root.update()
+
+    def _load_models_thread(self):
+        try:
+            models_dict = load_all_models(self.config)
+            ens_cfg = self.config.get('ensemble', {})
+            w1 = ens_cfg.get('wav2vec2_weight', 0.5)
+            w2 = ens_cfg.get('rawnet2_weight', 0.5)
+            threshold = ens_cfg.get('threshold', 0.5)
+            self.ensemble = Ensemble(models_dict, w1, w2, threshold)
+            self.capturer.detector = self.ensemble
+            self.update_queue.put(('loading_done', None))
+        except Exception as e:
+            logger.error(f"Error loading models: {e}")
+            self.update_queue.put(('error', f"Failed to load models: {e}"))
 
     def _build_ui(self):
         # Create Tabs
@@ -69,11 +108,9 @@ class DeepfakeDetectorApp:
         self.status_label.pack(side=tk.BOTTOM, anchor=tk.W, padx=10, pady=5)
 
     def _build_live_tab(self, parent):
-        # Header
         header = ttk.Label(parent, text="Real-time Detection", style="Header.TLabel", foreground="#333")
         header.pack(pady=(0, 20))
         
-        # Device Selection
         dev_frame = ttk.LabelFrame(parent, text="Input Device", padding="10")
         dev_frame.pack(fill=tk.X, pady=10)
         
@@ -81,17 +118,15 @@ class DeepfakeDetectorApp:
         self.device_combo.pack(fill=tk.X)
         self.device_combo.bind("<<ComboboxSelected>>", self.on_device_change)
         
-        # Controls
         btn_frame = ttk.Frame(parent)
         btn_frame.pack(pady=20)
         
-        self.start_btn = ttk.Button(btn_frame, text="▶ Start Listening", command=self.start_listening)
+        self.start_btn = ttk.Button(btn_frame, text="▶ Start Listening", command=self.start_listening, state="disabled")
         self.start_btn.pack(side=tk.LEFT, padx=5)
         
         self.stop_btn = ttk.Button(btn_frame, text="⏹ Stop Listening", command=self.stop_listening, state="disabled")
         self.stop_btn.pack(side=tk.LEFT, padx=5)
         
-        # Results Display
         res_frame = ttk.LabelFrame(parent, text="Analysis Result", padding="20")
         res_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         
@@ -100,13 +135,17 @@ class DeepfakeDetectorApp:
         
         self.live_confidence_label = ttk.Label(res_frame, text="Confidence: --%", style="Confidence.TLabel")
         self.live_confidence_label.pack(pady=5)
+        
+        self.live_wav2vec2_label = ttk.Label(res_frame, text="Wav2Vec2: --", font=("Helvetica", 10))
+        self.live_wav2vec2_label.pack(pady=2)
+        
+        self.live_rawnet2_label = ttk.Label(res_frame, text="RawNet2: --", font=("Helvetica", 10))
+        self.live_rawnet2_label.pack(pady=2)
 
     def _build_file_tab(self, parent):
-        # Header
         header = ttk.Label(parent, text="File Analysis", style="Header.TLabel", foreground="#333")
         header.pack(pady=(0, 20))
         
-        # File Selection
         file_frame = ttk.LabelFrame(parent, text="Select Audio File", padding="10")
         file_frame.pack(fill=tk.X, pady=10)
         
@@ -116,11 +155,9 @@ class DeepfakeDetectorApp:
         browse_btn = ttk.Button(file_frame, text="Browse...", command=self.browse_file)
         browse_btn.pack(side=tk.LEFT)
         
-        # Analyze Button
         self.analyze_btn = ttk.Button(parent, text="🔍 Analyze File", command=self.analyze_file, state="disabled")
         self.analyze_btn.pack(pady=10)
         
-        # Results Display
         res_frame = ttk.LabelFrame(parent, text="Analysis Result", padding="20")
         res_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         
@@ -130,8 +167,11 @@ class DeepfakeDetectorApp:
         self.file_confidence_label = ttk.Label(res_frame, text="Confidence: --%", style="Confidence.TLabel")
         self.file_confidence_label.pack(pady=5)
         
-        self.file_details_label = ttk.Label(res_frame, text="", font=("Courier", 8))
-        self.file_details_label.pack(pady=5)
+        self.file_wav2vec2_label = ttk.Label(res_frame, text="Wav2Vec2: --", font=("Helvetica", 10))
+        self.file_wav2vec2_label.pack(pady=2)
+        
+        self.file_rawnet2_label = ttk.Label(res_frame, text="RawNet2: --", font=("Helvetica", 10))
+        self.file_rawnet2_label.pack(pady=2)
 
     def _load_devices(self):
         try:
@@ -155,9 +195,8 @@ class DeepfakeDetectorApp:
             self.capturer.device_index = idx
             logger.info(f"Selected device: {name} (Index {idx})")
 
-    # --- Live Analysis Methods ---
     def start_listening(self):
-        if self.is_listening:
+        if self.is_listening or not self.ensemble:
             return
             
         try:
@@ -198,10 +237,9 @@ class DeepfakeDetectorApp:
         self.live_result_label.config(text="STOPPED", foreground="gray")
         self.status_label.config(text="Stopped.")
 
-    def audio_callback(self, result):
-        self.update_queue.put(('live', result))
+    def audio_callback(self, result_dict):
+        self.update_queue.put(('live', result_dict))
 
-    # --- File Analysis Methods ---
     def browse_file(self):
         filename = filedialog.askopenfilename(
             title="Select Audio File",
@@ -209,7 +247,8 @@ class DeepfakeDetectorApp:
         )
         if filename:
             self.file_path_var.set(filename)
-            self.analyze_btn.config(state="normal")
+            if self.ensemble:
+                self.analyze_btn.config(state="normal")
             self.file_result_label.config(text="READY", foreground="gray")
             self.file_confidence_label.config(text="Confidence: --%")
 
@@ -223,38 +262,34 @@ class DeepfakeDetectorApp:
         self.status_label.config(text=f"Analyzing {os.path.basename(file_path)}...")
         self.root.update()
 
-        # Run in thread to avoid freezing UI
         threading.Thread(target=self._run_file_analysis, args=(file_path,), daemon=True).start()
 
     def _run_file_analysis(self, file_path):
         try:
-            # Ensure detector is loaded
-            if not self.capturer.detector:
-                 self.capturer._init_detector()
-
-            prediction, confidence, details = self.capturer.detector.predict_single(file_path)
-            result_text = "FAKE" if prediction == 1 else "REAL"
-            
-            self.update_queue.put(('file', (result_text, confidence, details)))
-            
+            audio, sr = librosa.load(file_path, sr=None)
+            result = self.ensemble.predict(audio, sr)
+            self.update_queue.put(('file', result))
         except Exception as e:
             logger.error(f"Error analyzing file: {e}")
             self.update_queue.put(('error', str(e)))
 
-    # --- Shared Core Methods ---
     def check_queue(self):
         try:
             while True:
                 msg_type, data = self.update_queue.get_nowait()
                 
-                if msg_type == 'live':
-                    text, conf = data
-                    self.update_live_display(text, conf)
+                if msg_type == 'loading_done':
+                    self.loading_win.destroy()
+                    self.start_btn.config(state="normal")
+                    if self.file_path_var.get():
+                        self.analyze_btn.config(state="normal")
+                    self.status_label.config(text="Models loaded successfully.")
+                elif msg_type == 'live':
+                    self.update_live_display(data)
                 elif msg_type == 'file':
-                    text, conf, details = data
-                    self.update_file_display(text, conf, details)
+                    self.update_file_display(data)
                 elif msg_type == 'error':
-                    messagebox.showerror("Analysis Error", data)
+                    messagebox.showerror("Error", data)
                     self.file_result_label.config(text="ERROR", foreground="red")
                     
         except queue.Empty:
@@ -262,18 +297,30 @@ class DeepfakeDetectorApp:
         finally:
             self.root.after(100, self.check_queue)
 
-    def update_live_display(self, text, confidence):
-        color = "#FF0000" if text == "FAKE" else "#008000"
-        self.live_result_label.config(text=text, foreground=color)
+    def update_live_display(self, result):
+        verdict = result['verdict']
+        confidence = result['confidence']
+        w2v_score = result['wav2vec2_score']
+        rn_score = result['rawnet2_score']
+        
+        color = "#FF0000" if verdict == "SPOOF" else "#008000"
+        self.live_result_label.config(text=verdict, foreground=color)
         self.live_confidence_label.config(text=f"Confidence: {confidence:.2%}")
+        self.live_wav2vec2_label.config(text=f"Wav2Vec2 P(spoof): {w2v_score:.2f}")
+        self.live_rawnet2_label.config(text=f"RawNet2 P(spoof): {rn_score:.2f}")
 
-    def update_file_display(self, text, confidence, details):
-        color = "#FF0000" if text == "FAKE" else "#008000"
-        self.file_result_label.config(text=text, foreground=color)
+    def update_file_display(self, result):
+        verdict = result['verdict']
+        confidence = result['confidence']
+        w2v_score = result['wav2vec2_score']
+        rn_score = result['rawnet2_score']
+        
+        color = "#FF0000" if verdict == "SPOOF" else "#008000"
+        self.file_result_label.config(text=verdict, foreground=color)
         self.file_confidence_label.config(text=f"Confidence: {confidence:.2%}")
+        self.file_wav2vec2_label.config(text=f"Wav2Vec2 P(spoof): {w2v_score:.2f}")
+        self.file_rawnet2_label.config(text=f"RawNet2 P(spoof): {rn_score:.2f}")
         self.status_label.config(text="Analysis complete.")
-        # Optional: show details in tooltip or simpler text
-        # self.file_details_label.config(text=str(details)) 
 
     def on_close(self):
         if self.is_listening:

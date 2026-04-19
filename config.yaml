@@ -1,8 +1,3 @@
-# Deepfake Voice Detection Configuration
-
-# -----------------------------------------------------------------------------
-# General Settings
-# -----------------------------------------------------------------------------
 app:
   name: "Deepfake Voice Detector"
   version: "1.0.0"
@@ -11,124 +6,25 @@ app:
   output_dir: "./outputs"
   use_gpu: true
 
-# -----------------------------------------------------------------------------
-# Data Processing & Dataset
-# -----------------------------------------------------------------------------
-dataset:
-  name: "SceneFake"
-  base_path: "c:/Users/ishat/OneDrive/Documents/Projects/Deepfake Voice Detection/data"
-  output_path: "./data"
-  file_extension: "wav"
-  type: "folder" # 'protocol' for ASVspoof, 'folder' for SceneFake
-  
-  # Dataset sampling (null for all)
-  train_samples: null 
-  dev_samples: null
-  eval_samples: null
+models:
+  wav2vec2:
+    hf_repo: "IshatShivhare/deepfake-voice-wav2vec2"
+    weight_file: "wav2vec2_classifier.pth"
+    config_file: "config.json"
+    local_cache: "weights/wav2vec2_classifier.pth"
+
+  rawnet2:
+    hf_repo: "IshatShivhare/deepfake-rawnet2-sincnet"
+    weight_file: "rawnet2_sincnet_final.pth"
+    config_file: "config.json"
+    local_cache: "weights/rawnet2_sincnet_final.pth"
+
+ensemble:
+  wav2vec2_weight: 0.5
+  rawnet2_weight: 0.5
+  threshold: 0.5
 
 audio:
   sample_rate: 16000
-  chunk_duration: 3.0       # seconds per chunk for analysis
-  n_fft: 1024
-  hop_length: 256
-  
-features:
-  n_mfcc: 40
-  extract_spectral: true
-  extract_temporal: true
-  extract_chroma: true
-  
-augmentation:
-  enabled: true
-  train_only: true
-  techniques:
-    noise:
-      enabled: true
-      probability: 0.3
-      noise_factor: 0.005
-    time_stretch:
-      enabled: true
-      probability: 0.2
-      rate_range: [0.9, 1.1]
-    pitch_shift:
-      enabled: true       # Disabled for speed
-      probability: 0.0
-      semitone_range: [-2, 2]
-    codec_simulation:
-      enabled: true
-      probability: 0.3
-      codec: "opus"
-      bitrate: "16k"
-
-processing:
-  n_jobs: 8                # Parallel processing cores
-  checkpoint_interval: 500
-  resume_from_checkpoint: true
-
-feature_selection:
-  run_analysis: true       # Generate feature importance graph
-  top_n_features: null     # null = use all
-
-# -----------------------------------------------------------------------------
-# Model Configuration: Custom
-# -----------------------------------------------------------------------------
-model_custom:
-  architecture: "simple_cnn"  # Options: cnn_gru, cnn_lstm, cnn_bilstm, simple_cnn
-  weights_path: "./weights/custom_model/deepfake_detector.h5"
-  
-  # CNN parameters
-  conv_filters: [64, 128]
-  kernel_size: 3
-  pool_size: 2
-  
-  # RNN parameters
-  rnn_units: 128
-  rnn_type: "gru"
-  
-  # Dense layers
-  dense_units: [64]
-  dropout_rate: 0.6
-  dropout_rnn: 0.3
-  
-  # Training
-  batch_size: 32
-  epochs: 30
-  learning_rate: 0.001
-  early_stopping_patience: 5
-  reduce_lr_patience: 3
-  use_class_weights: true
-  save_best_only: true
-  
-  # Strategy
-  use_progressive: false
-  baseline_threshold: 0.75
-  validation_split: 0.0    # Use dev set
-
-# -----------------------------------------------------------------------------
-# Model Configuration: Vocoder (RawNet)
-# -----------------------------------------------------------------------------
-model_vocoder:
-  name: "RawNet2"
-  weights_path: "./weights/librifake_pretrained_lambda0.5_epoch_25.pth"
-  
-  nb_samp: 64600           # ~4 seconds at 16k
-  first_conv: 1024         # no. of filter coefficients 
-  in_channels: 1
-  filts: [20, [20, 20], [20, 128], [128, 128]]
-  blocks: [2, 4]
-  nb_fc_node: 1024
-  gru_node: 1024
-  nb_gru_layer: 3
-  
-  optimizer: "Adam"
-  amsgrad: 1
-
-# -----------------------------------------------------------------------------
-# Ensemble Configuration
-# -----------------------------------------------------------------------------
-ensemble:
-  method: "weighted_average" # or "voting", "stacking"
-  weights: 
-    custom: 0.6      # Your trained CNN+GRU model
-    vocoder: 0.4     # Pretrained RawNet vocoder model
-  threshold: 0.5
+  chunk_duration: 4.0
+  max_samples: 64000

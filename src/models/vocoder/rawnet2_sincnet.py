@@ -154,7 +154,7 @@ class RawNet2WithSincNet(nn.Module):
         x = x.transpose(1, 2)
         
         x, _ = self.gru(x)
-        x = x[:, -1, :]
+        x = x.mean(dim=1)
         x = self.fc(x)
         x = F.leaky_relu(x, 0.3)
         x = self.out(x)

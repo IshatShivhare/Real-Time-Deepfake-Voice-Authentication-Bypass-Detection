@@ -8,3 +8,4 @@ numpy
 librosa
 pyyaml
 tqdm
+python-dotenv

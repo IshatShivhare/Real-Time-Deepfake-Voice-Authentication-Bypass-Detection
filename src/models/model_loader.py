@@ -1,12 +1,24 @@
 import os
 import json
 import torch
-from huggingface_hub import hf_hub_download
+from dotenv import load_dotenv
+from huggingface_hub import hf_hub_download, login
 from transformers import Wav2Vec2Processor
 from src.models.custom.wav2vec2_classifier import Wav2Vec2Classifier
 from src.models.vocoder.rawnet2_sincnet import RawNet2WithSincNet
 
+# Load environment variables
+load_dotenv()
+
 def load_all_models(config: dict) -> dict:
+    # HuggingFace Login if token exists
+    hf_token = os.getenv("HF_TOKEN")
+    if hf_token:
+        print("Authenticating with HuggingFace...")
+        login(token=hf_token)
+    else:
+        print("No HF_TOKEN found in .env. Proceeding without login.")
+
     models = {}
     
     # Wav2Vec2

@@ -20,8 +20,8 @@ models:
     local_cache: "weights/rawnet2_sincnet_final.pth"
 
 ensemble:
-  wav2vec2_weight: 0.5
-  rawnet2_weight: 0.5
+  wav2vec2_weight: 0.80
+  rawnet2_weight: 0.20
   threshold: 0.5
 
 audio:

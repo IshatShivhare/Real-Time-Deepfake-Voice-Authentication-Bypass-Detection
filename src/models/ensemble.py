@@ -12,6 +12,9 @@ class Ensemble:
         self.threshold = threshold
 
     def predict(self, audio_array: np.ndarray, sample_rate: int) -> dict:
+        # Peak normalization
+        audio_array = audio_array / (np.abs(audio_array).max() + 1e-8)
+        
         target_sr = 16000
         max_samples = 64000
         
